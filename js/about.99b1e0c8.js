@@ -1,0 +1,2 @@
+(window["webpackJsonp"]=window["webpackJsonp"]||[]).push([["about"],{f820:function(e,n,t){"use strict";t.r(n);var c=t("7a23"),b={class:"about"},u=Object(c["e"])("h1",null,"ふりふりキューブ 説明",-1),l=Object(c["f"])(" キューブをたくさん振ってから机に置くと、キューブが動く！ "),a=Object(c["e"])("br",null,null,-1),o=Object(c["e"])("h3",null,"ヒント",-1),r=Object(c["f"])(" キューブの持ち方を変えて振ると動きが変わる "),s=[u,l,a,o,r];function d(e,n){return Object(c["p"])(),Object(c["d"])("div",b,s)}var j=t("6b0d"),O=t.n(j);const f={},i=O()(f,[["render",d]]);n["default"]=i}}]);
+//# sourceMappingURL=about.99b1e0c8.js.map
