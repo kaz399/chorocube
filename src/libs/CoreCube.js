@@ -234,7 +234,7 @@ export class coreCube {
       console.log('add motor result handler');
       const enableNotify = motorChr.startNotifications();
       enableNotify.then(() => {
-        console.log('enableNotify (fullfilled)', enableNotify);
+        console.log('enableNotify', enableNotify);
         motorChr.addEventListener(
           'characteristicvaluechanged',
           moveToResultHandler);
@@ -268,13 +268,13 @@ export class coreCube {
     }
     try {
       console.log(this.characteristics);
-      const stopNotifiyChr = this.CHARACTERISTIC_LIST.map((chrList) => {
+      const stopNotifyChr = this.CHARACTERISTIC_LIST.map((chrList) => {
         const chrName = chrList.name;
         console.log(`stop notify ${chrName}`);
         return this.characteristics[chrName].chr.stopNotifications();
       });
 
-      const disabledNotifyChr = await Promise.all(stopNotifiyChr);
+      const disabledNotifyChr = await Promise.all(stopNotifyChr);
       disabledNotifyChr.forEach((chr) => {
         const chrName = this.uuidToChrName[chr.uuid];
         const registeredHandlers = this.characteristics[chrName].handler;
@@ -316,7 +316,7 @@ export class coreCube {
         });
       this.device = device;
       this.connected = true;
-      console.log('******** add disconnect lisner');
+      console.log('******** add disconnect listener');
       this.disconnectHandler.push(disconnectHandler);
       await device.addEventListener('gattserverdisconnected', disconnectHandler);
       const server = await device.gatt.connect();

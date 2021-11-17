@@ -1,5 +1,9 @@
 <template>
   <div class="about">
-    <h1>This is an about page</h1>
+    <h1>ふりふりキューブ 説明</h1>
+    キューブをたくさん振ってから机に置くと、キューブが動く！
+    <br />
+    <h3>ヒント</h3>
+    キューブの持ち方を変えて振ると動きが変わる
   </div>
 </template>
