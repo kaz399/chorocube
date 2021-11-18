@@ -1,7 +1,7 @@
 <template>
   <div class="hello">
     <h1>{{ msg }}</h1>
-    試作その3
+    試作その7
     <p>
       Vue + web bluetooth による
       <br />
@@ -56,7 +56,7 @@ export default {
   data: function () {
     return {
       ready: false,
-      cube: new coreCube("cube1"),
+      cube: null,
       currentMotion: {
         flat: NaN,
         tap: NaN,
@@ -95,6 +95,7 @@ export default {
     console.log("Hello World!");
     console.log("This is a test program!");
     this.logMessages = "";
+    this.cube = new coreCube({name: "cube1", logger: this.debugLog});
   },
   beforeUnmount: async function () {
     if (this.cube.isConnected()) {
@@ -106,7 +107,13 @@ export default {
   methods: {
     debugLog: function (msg) {
       console.log(msg);
-      this.logMessages += "\n" + msg;
+      let logData;
+      if (typeof(msg) === "string") {
+        logData = msg;
+      } else {
+        logData = JSON.stringify(msg, null, 2);
+      }
+      this.logMessages += "\n" + logData;
     },
     autoRun: async function () {
       this.running = true;
@@ -146,7 +153,6 @@ export default {
     },
 
     disconnectHandler: async function () {
-      await this.cube.setLamp(0, 0, 0);
       console.log("disconnect");
       this.ready = false;
     },
