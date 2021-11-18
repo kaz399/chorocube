@@ -3,10 +3,7 @@
 
 export class coreCube {
 
-  constructor(name) {
-    if (name === undefined) {
-      name = null;
-    }
+  constructor(params) {
     this.SERVICE = '10b20100-5b3b-4571-9508-cf3efcd7bbae';
     this.CHARACTERISTIC_LIST = [
       {name: 'position', uuid: '10b20101-5b3b-4571-9508-cf3efcd7bbae'},
@@ -17,11 +14,18 @@ export class coreCube {
       {name: 'button',   uuid: '10b20107-5b3b-4571-9508-cf3efcd7bbae'},
       {name: 'battery',  uuid: '10b20108-5b3b-4571-9508-cf3efcd7bbae'},
     ];
-    this._resetParams(name);
+    this._resetParams(params);
   }
 
-  _resetParams(name) {
-    this.name = name
+  _resetParams(params) {
+    if (params.name === undefined) {
+      params.name = null;
+    }
+    if (params.logger === undefined) {
+      params.logger = console.log;
+    }
+    this.name = params.name;
+    this.logger = params.logger;
     this.connected = false;
     this.busy = false;
     this.moving = false;
@@ -58,7 +62,7 @@ export class coreCube {
         await this.characteristics[chrName].chr.writeValue(value);
         result = true;
       } catch (e) {
-        console.log(`ble write error ${e}`);
+        this.logger(`ble write error ${e}`);
         throw e;
       } finally {
         this.busy = false;
@@ -75,7 +79,7 @@ export class coreCube {
         const readData = this.characteristics[chrName].chr.readValue();
         result = readData;
       } catch (e) {
-        console.log(`ble read error ${e}`);
+        this.logger(`ble read error ${e}`);
         throw e;
       } finally {
         this.busy = false;
@@ -90,7 +94,7 @@ export class coreCube {
   }
 
   async setMotor(l, r) {
-    console.log(`${this.name}: move ${l} ${r}`);
+    this.logger(`${this.name}: move ${l} ${r}`);
     const direction_l = (l > 0) ? 0x01 : 0x02;
     const direction_r = (r > 0) ? 0x01 : 0x02;
     const speed_l = Math.min(Math.abs(l), 255);
@@ -100,7 +104,7 @@ export class coreCube {
   }
 
   async move(l, r, duration) {
-    console.log(`${this.name}: move ${l} ${r} ${duration}`);
+    this.logger(`${this.name}: move ${l} ${r} ${duration}`);
     const direction_l = (l > 0) ? 0x01 : 0x02;
     const direction_r = (r > 0) ? 0x01 : 0x02;
     const speed_l = Math.min(Math.abs(l), 255);
@@ -111,12 +115,12 @@ export class coreCube {
   }
 
   async moveTo(x, y, degree, ...[option]) {
-    console.log(`${this.name}: moveTo ${x},${y} ${degree}`, option);
+    this.logger(`${this.name}: moveTo ${x},${y} ${degree}`, option);
     const force = ('force' in option) ? option.force : false;
     if (force === true) {
-      console.log('force to move');
+      this.logger('force to move');
     } else if (this.moving === true) {
-      console.log('moving now');
+      this.logger('moving now');
       return false;
     }
     this.moving = true;
@@ -136,7 +140,7 @@ export class coreCube {
     const currentCommandId = this.idCounter;
     this.idCounter = (this.idCounter + 1) & 0xff;
 
-    console.log(`moving options ${movingMode}, ${accelerationMode}`);
+    this.logger(`moving options ${movingMode}, ${accelerationMode}`);
     const value = new Uint8Array([0x03, currentCommandId, timeout, movingMode, speed, accelerationMode, 0x00, x_l, x_h, y_l, y_h, degree_l, degree_h]);
     const currentCube = this;
     const motorChr = this.characteristics['motor'].chr;
@@ -145,20 +149,20 @@ export class coreCube {
       let moveToResultHandler = null;
       let moveToResultWatcher = null;
 
-      console.log('add event handler for motor', currentCommandId);
+      this.logger('add event handler for motor', currentCommandId);
       const motorResultHandler = (event) => {
-        console.log(`motorResultHandler event received`);
+        this.logger(`motorResultHandler event received`);
         const commandType = event.target.value.getUint8(0);
         const commandId = event.target.value.getUint8(1);
 
         // write response of moveTo
         if (commandType === 0x03 && commandId === currentCommandId) {
-          console.log(`moveTo response command(handler) (id:${commandId} ${currentCommandId})`);
+          this.logger(`moveTo response command(handler) (id:${commandId} ${currentCommandId})`);
           return;
         }
 
         // remove EventListener and ResultWatcher
-        console.log('remove motor result handler & watcher', currentCommandId);
+        this.logger('remove motor result handler & watcher', currentCommandId);
         motorChr.removeEventListener(
           'characteristicvaluechanged',
           motorResultHandler);
@@ -168,25 +172,25 @@ export class coreCube {
 
         if (commandType === 0x83 && commandId === currentCommandId) {
           const commandResult = event.target.value.getUint8(2);
-          console.log(`moveResult ${commandResult}`, currentCommandId);
+          this.logger(`moveResult ${commandResult}`, currentCommandId);
           if (commandResult === 0x00) {
             currentCube.moving = false;
-            console.log(`moveTo success(handler) ${commandResult} ${commandType} ${commandId}`);
+            this.logger(`moveTo success(handler) ${commandResult} ${commandType} ${commandId}`);
             resolve(currentCube);
           } else {
             currentCube.moving = false;
-            console.log(`moveTo failed(handler) ${commandResult} ${commandType} ${commandId}`);
+            this.logger(`moveTo failed(handler) ${commandResult} ${commandType} ${commandId}`);
             reject(commandResult);
           }
         } else {
-          console.log(`unexpected command response(handler) ${commandType.toString(16)} ${commandId} ${currentCommandId}`);
+          this.logger(`unexpected command response(handler) ${commandType.toString(16)} ${commandId} ${currentCommandId}`);
           currentCube.moving = false;
           reject(-1);
         }
       }
 
       const motorResultWatcher = async () => {
-        console.log('motorResultWatcher', currentCommandId);
+        this.logger('motorResultWatcher', currentCommandId);
         const moveResult = await currentCube.read('motor');
         if (moveResult === false) {
           return;
@@ -196,13 +200,13 @@ export class coreCube {
 
         // write response of moveTo
         if (commandType === 0x03 && commandId === currentCommandId) {
-          console.log(`find moveTo command, set motor result watcher again (id:${commandId} ${currentCommandId})`);
+          this.logger(`find moveTo command, set motor result watcher again (id:${commandId} ${currentCommandId})`);
           moveToResultWatcher = setTimeout(motorResultWatcher, (timeout * 100) + 100);
           return;
         }
 
         // remove EventListener and ResultWatcher
-        console.log('remove motor result handler & watcher', currentCommandId);
+        this.logger('remove motor result handler & watcher', currentCommandId);
         motorChr.removeEventListener(
           'characteristicvaluechanged',
           motorResultHandler);
@@ -212,52 +216,51 @@ export class coreCube {
 
         if (commandType === 0x83 && commandId === currentCommandId) {
           const commandResult = moveResult.getUint8(2);
-          console.log(`moveResult ${commandResult}`);
+          this.logger(`moveResult ${commandResult}`);
           if (commandResult === 0x00) {
             currentCube.moving = false;
-            console.log(`moveTo success(watcher) ${commandResult} ${commandType} ${commandId}`, currentCommandId);
+            this.logger(`moveTo success(watcher) ${commandResult} ${commandType} ${commandId}`, currentCommandId);
             resolve(currentCube);
           } else {
             currentCube.moving = false;
-            console.log(`moveTo failed(watcher) ${commandResult} ${commandType} ${commandId}`, currentCommandId);
+            this.logger(`moveTo failed(watcher) ${commandResult} ${commandType} ${commandId}`, currentCommandId);
             reject(commandResult);
           }
         } else {
-          console.log(`unexpected command response(watcher) ${commandType.toString(16)} ${commandId} ${currentCommandId}`);
+          this.logger(`unexpected command response(watcher) ${commandType.toString(16)} ${commandId} ${currentCommandId}`);
           currentCube.moving = false;
           reject(-1);
         }
       }
 
-
       moveToResultHandler = motorResultHandler;
-      console.log('add motor result handler');
+      this.logger('add motor result handler');
       const enableNotify = motorChr.startNotifications();
       enableNotify.then(() => {
-        console.log('enableNotify', enableNotify);
+        this.logger('enableNotify', enableNotify);
         motorChr.addEventListener(
           'characteristicvaluechanged',
           moveToResultHandler);
 
-        console.log('set motor result watcher');
+        this.logger('set motor result watcher');
         moveToResultWatcher = setTimeout(motorResultWatcher, (timeout * 100) + 100);
-        console.log('start to move');
+        this.logger('start to move');
         currentCube.write('motor', value).then((result) => {
-          console.log(`moveTo command success ${result}`);
+          this.logger(`moveTo command success ${result}`);
           return;
         }).catch((result) => {
           currentCube.moving = false;
-          console.log(`moveTo command failed ${result}`);
+          this.logger(`moveTo command failed ${result}`);
           reject(result);
         });
       }).catch((e) => {
         currentCube.moving = false;
-        console.log('Promise exception handler:', e);
+        this.logger('Promise exception handler:', e);
         reject(e);
       });
     });
 
-    console.log('return resolver (pending)', resolver);
+    this.logger('return resolver (pending)', resolver);
     return resolver;
   }
 
@@ -267,10 +270,10 @@ export class coreCube {
       return false;
     }
     try {
-      console.log(this.characteristics);
+      this.logger(this.characteristics);
       const stopNotifyChr = this.CHARACTERISTIC_LIST.map((chrList) => {
         const chrName = chrList.name;
-        console.log(`stop notify ${chrName}`);
+        this.logger(`stop notify ${chrName}`);
         return this.characteristics[chrName].chr.stopNotifications();
       });
 
@@ -278,37 +281,36 @@ export class coreCube {
       disabledNotifyChr.forEach((chr) => {
         const chrName = this.uuidToChrName[chr.uuid];
         const registeredHandlers = this.characteristics[chrName].handler;
-        console.log(`remove handler ${chrName}`);
+        this.logger(`remove handler ${chrName}`);
         registeredHandlers.forEach((handler) => {
           chr.removeEventListener('characteristicvaluechanged', handler);
         });
       });
 
-      console.log(`remove disconnectHandler`);
+      this.logger(`remove disconnectHandler`);
       this.disconnectHandler.forEach((handler) => {
         this.device.removeEventListener(
           'gattserverdisconnected',
           handler);
       });
-      console.log(`disconnect`);
+      this.logger(`disconnect`);
       await this.device.gatt.disconnect();
       result = true;
     } catch (err) {
-      console.log('disconnectDevice:Error');
-      console.log(err);
+      this.logger('disconnectDevice:Error');
+      this.logger(err);
       if (force !== undefined && force === true) {
         await this.device.gatt.disconnect();
       }
       result = false;
     }
 
-    this._resetParams();
     return result;
   }
 
   async connectDevice(disconnectHandler) {
     let result = false;
-    console.log('***************************************** connect to cube');
+    this.logger('***************************************** connect to cube');
     try {
       const device = await navigator.bluetooth
         .requestDevice({
@@ -316,35 +318,40 @@ export class coreCube {
         });
       this.device = device;
       this.connected = true;
-      console.log('******** add disconnect listener');
+      this.logger('******** add disconnect listener');
       this.disconnectHandler.push(disconnectHandler);
       await device.addEventListener('gattserverdisconnected', disconnectHandler);
       const server = await device.gatt.connect();
       const service = await server.getPrimaryService(this.SERVICE);
+      console.log(service);
+      this.logger(service);
       const characteristicsPromises = this.CHARACTERISTIC_LIST.map((ch) => {
         return service.getCharacteristic(ch.uuid);
       });
+      this.logger(characteristicsPromises);
       const characteristics = await Promise.all(characteristicsPromises);
-      console.log(characteristics);
+      this.logger('******** get characteristics');
+      this.logger(characteristics);
 
       characteristics.forEach((ch) => {
         const chrName = this.uuidToChrName[ch.uuid];
         this.characteristics[chrName].chr = ch;
       });
 
-      console.log(this.characteristics);
+      this.logger('******** this.characteristics');
+      this.logger(this.characteristics);
       result = true;
     } catch(error) {
-      console.log(`ERROR:connectToDevice(): ${error}`);
+      this.logger(`ERROR:connectToDevice(): ${error}`);
       result = false;
     }
     return result;
   }
 
   async addHandler(name, handler) {
-    console.log(this.characteristics);
+    this.logger(this.characteristics);
     if (!(name in this.characteristics)) {
-      console.log(`ERROR:addHandler(): no characteristic ${name}`);
+      this.logger(`ERROR:addHandler(): no characteristic ${name}`);
       return false;
     }
     try {
@@ -359,10 +366,10 @@ export class coreCube {
       }).catch(() => {
         return false;
       });
-      console.log('addEventListenerResult', handlerResult);
+      this.logger('addEventListenerResult', handlerResult);
       return handlerResult;
     } catch(error) {
-      console.log(`ERROR:addHandler(): ${error}`);
+      this.logger(`ERROR:addHandler(): ${error}`);
       return false;
     }
   }
