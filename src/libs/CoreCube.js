@@ -18,11 +18,18 @@ export class coreCube {
   }
 
   _resetParams(params) {
-    if (params.name === undefined) {
-      params.name = null;
-    }
-    if (params.logger === undefined) {
-      params.logger = console.log;
+    if (params === undefined) {
+      params = {
+        name: null,
+        logger: console.log,
+      };
+    } else {
+      if (params.name === undefined) {
+        params.name = null;
+      }
+      if (params.logger === undefined) {
+        params.logger = console.log;
+      }
     }
     this.name = params.name;
     this.logger = params.logger;
@@ -305,6 +312,7 @@ export class coreCube {
       result = false;
     }
 
+    this._resetParams();
     return result;
   }
 
