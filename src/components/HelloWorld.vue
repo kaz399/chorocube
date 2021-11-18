@@ -1,9 +1,11 @@
 <template>
   <div class="hello">
     <h1>{{ msg }}</h1>
-    試作その２
+    試作その3
     <p>
-      Vue + web bluetooth による toio &trade; core cube 制御サンプルプログラム<br />
+      Vue + web bluetooth による
+      <br />
+      toio &trade; core cube 制御サンプルプログラム<br />
     </p>
     <h3>toio &trade; core cube と接続</h3>
     <br />
@@ -25,6 +27,12 @@
     </div>
     <div v-else>
       <button v-on:click="connectToCube">せ つ ぞ く</button>
+    </div>
+    <div v-if="debugMode">
+      <h3>デバッグ情報</h3>
+      <div>
+        <textarea readonly v-model="logMessages"></textarea>
+      </div>
     </div>
   </div>
 </template>
@@ -68,19 +76,25 @@ export default {
       actions: [],
       running: false,
       timeoutEvent: null,
+      logMessages: "",
     };
   },
   props: {
     msg: String,
-  },
-  created: function () {
-    console.log("Hello World!");
-    console.log("This is a test program!");
+    debugMode: Boolean,
   },
   computed: {
     cubeIsReady: function () {
       return this.ready;
     },
+    getLog: function () {
+      return this.logMessages;
+    },
+  },
+  created: function () {
+    console.log("Hello World!");
+    console.log("This is a test program!");
+    this.logMessages = "";
   },
   beforeUnmount: async function () {
     if (this.cube.isConnected()) {
@@ -90,6 +104,10 @@ export default {
     console.log("Bye!");
   },
   methods: {
+    debugLog: function (msg) {
+      console.log(msg);
+      this.logMessages += "\n" + msg;
+    },
     autoRun: async function () {
       this.running = true;
       console.log("autoRun start!!", this.actions.length);
@@ -222,15 +240,18 @@ export default {
       }
     },
     connectToCube: async function () {
-      console.log("connect to ble device");
-      console.log(this.cube);
+      this.debugLog("connect to ble device");
       if (!this.cube.isConnected()) {
         await this.cube.connectDevice(this.disconnectHandler);
         if (!this.cube.isConnected()) {
           console.log("Error:failed to conenct");
+          return;
         }
+        this.debugLog("add handler");
         await this.cube.addHandler("motion", this.motionHandler);
+        this.debugLog("lamp on");
         await this.cube.setLamp(0xff, 0xff, 0xff);
+        this.debugLog("success to connect");
         this.ready = true;
       }
     },
@@ -260,5 +281,9 @@ li {
 }
 a {
   color: #42b983;
+}
+textarea {
+  width: 80%;
+  height: 15em;
 }
 </style>
